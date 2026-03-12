@@ -11,7 +11,16 @@ import '../../../manager/sign_up_events.dart';
 import '../../../manager/sign_up_states.dart';
 
 class BuildSkillsSelector extends StatefulWidget {
-  const BuildSkillsSelector({super.key});
+  final List<String>? selectedSkills;
+  final ValueChanged<String>? onAddSkill;
+  final ValueChanged<String>? onRemoveSkill;
+
+  const BuildSkillsSelector({
+    super.key,
+    this.selectedSkills,
+    this.onAddSkill,
+    this.onRemoveSkill,
+  });
 
   @override
   State<BuildSkillsSelector> createState() => _BuildSkillsSelectorState();
@@ -26,9 +35,24 @@ class _BuildSkillsSelectorState extends State<BuildSkillsSelector> {
     super.dispose();
   }
 
+  void _addSkill(BuildContext context, String skill) {
+    if (widget.onAddSkill != null) {
+      widget.onAddSkill!(skill);
+    } else {
+      context.read<SignUpBloc>().add(AddSkillEvent(skill));
+    }
+  }
+
+  void _removeSkill(BuildContext context, String skill) {
+    if (widget.onRemoveSkill != null) {
+      widget.onRemoveSkill!(skill);
+    } else {
+      context.read<SignUpBloc>().add(RemoveSkillEvent(skill));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // init size (375 × 812)
     AppConstants.initSize(context);
 
     return Column(
@@ -38,31 +62,16 @@ class _BuildSkillsSelectorState extends State<BuildSkillsSelector> {
         build_field_name("Skills"),
 
         /// Selected Skills
-        BlocBuilder<SignUpBloc, SignUpState>(
-          builder: (context, state) {
-            return Wrap(
-              spacing: AppConstants.w * 0.0213, // 8 / 375
-              runSpacing: AppConstants.h * 0.0098, // 8 / 812
-              children: state.selectedSkills.map((skill) {
-                return Chip(
-                  label: Text(skill),
-                  deleteIcon: Icon(
-                    Icons.close,
-                    size: AppConstants.w * 0.048, // 18 / 375
-                  ),
-                  onDeleted: () {
-                    context.read<SignUpBloc>().add(RemoveSkillEvent(skill));
-                  },
-                  backgroundColor: Colors.grey[200],
-                );
-              }).toList(),
-            );
-          },
-        ),
+        if (widget.selectedSkills != null)
+          _buildSkillsList(context, widget.selectedSkills!)
+        else
+          BlocBuilder<SignUpBloc, SignUpState>(
+            builder: (context, state) {
+              return _buildSkillsList(context, state.selectedSkills);
+            },
+          ),
 
-        SizedBox(
-          height: AppConstants.h * 0.0098, // 8 / 812
-        ),
+        SizedBox(height: AppConstants.h * 0.0098),
 
         /// Dropdown
         DefaultDropdown<String>(
@@ -72,21 +81,18 @@ class _BuildSkillsSelectorState extends State<BuildSkillsSelector> {
           }).toList(),
           onChanged: (value) {
             if (value != null) {
-              context.read<SignUpBloc>().add(AddSkillEvent(value));
+              _addSkill(context, value);
             }
           },
         ),
 
-        SizedBox(
-          height: AppConstants.h * 0.0148, // 12 / 812
-        ),
+        SizedBox(height: AppConstants.h * 0.0148),
 
         /// Custom Skill
         Row(
           children: [
             Expanded(
               child: Container(
-                width: 327,
                 height: 44,
                 child: TextField(
                   controller: _customSkillController,
@@ -99,72 +105,65 @@ class _BuildSkillsSelectorState extends State<BuildSkillsSelector> {
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppConstants.w * 0.032, // 12 / 375
-                      vertical: AppConstants.h * 0.0172, // 14 / 812
+                      horizontal: AppConstants.w * 0.032,
+                      vertical: AppConstants.h * 0.0172,
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.w * 0.0213, // 8 / 375
-                      ),
-                      borderSide: const BorderSide(
-                        color: const Color(0xFFE5E7EB),
-                      ),
+                      borderRadius: BorderRadius.circular(AppConstants.w * 0.0213),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        AppConstants.w * 0.0213, // 8 / 375
-                      ),
+                      borderRadius: BorderRadius.circular(AppConstants.w * 0.0213),
                       borderSide: BorderSide(
-                        color: Colors.redAccent,
-                        width: AppConstants.w * 0.0032, // 1.2 / 375
+                        color: AppColors.primaryColor, // Changed redAccent to primary
+                        width: AppConstants.w * 0.0032,
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-
+            SizedBox(width: AppConstants.w * 0.0213),
             SizedBox(
-              width: AppConstants.w * 0.0213, // 8 / 375
-            ),
-
-            SizedBox(
-              width: AppConstants.w * 0.187, // 24 / 375
-              height: AppConstants.h * 0.049, // 44 / 812
+              height: 44,
               child: ElevatedButton(
                 onPressed: () {
                   if (_customSkillController.text.trim().isNotEmpty) {
-                    context.read<SignUpBloc>().add(
-                      AddSkillEvent(_customSkillController.text.trim()),
-                    );
+                    _addSkill(context, _customSkillController.text.trim());
                     _customSkillController.clear();
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryColor,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppConstants.w * 0.0533, // 20 / 375
-                    vertical: AppConstants.h * 0.012, // 10 / 812
-                  ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      AppConstants.w * 0.0213, // 8 / 375
-                    ),
+                    borderRadius: BorderRadius.circular(AppConstants.w * 0.0213),
                   ),
                 ),
                 child: const Text(
                   'Add',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14),
                 ),
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildSkillsList(BuildContext context, List<String> skills) {
+    if (skills.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: AppConstants.w * 0.0213,
+      runSpacing: AppConstants.h * 0.0098,
+      children: skills.map((skill) {
+        return Chip(
+          label: Text(skill),
+          deleteIcon: Icon(Icons.close, size: AppConstants.w * 0.048),
+          onDeleted: () => _removeSkill(context, skill),
+          backgroundColor: Colors.grey[200],
+        );
+      }).toList(),
     );
   }
 }

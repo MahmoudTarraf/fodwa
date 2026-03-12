@@ -54,12 +54,12 @@ class _ProfileScreenItemState extends State<ProfileScreenItem> {
       ),
       body: BlocBuilder<ProfileCubit, ProfileState>(
         builder: (context, state) {
-          if (state is ProfileLoading) {
+          if (state is ProfileLoading || state is ProfileUpdating) {
             return const Center(child: CircularProgressIndicator());
-          } else if (state is ProfileError || state is ProfileSuccess) {
-            final user = (state is ProfileSuccess)
+          } else if (state is ProfileError || state is ProfileLoaded || state is ProfileUpdateSuccess) {
+            final user = (state is ProfileLoaded)
                 ? state.user
-                : _getStaticUser();
+                : (state is ProfileUpdateSuccess ? state.user : _getStaticUser());
             return SingleChildScrollView(
               child: Column(
                 children: [
@@ -143,7 +143,10 @@ class _ProfileScreenItemState extends State<ProfileScreenItem> {
       children: [
         Flexible(
           child: Text(
-            name,
+            name.replaceAllMapped(
+              RegExp(r'([a-z])([A-Z])'),
+              (Match m) => '${m[1]} ${m[2]}',
+            ),
             style: AppTextStyles.headlineSmall().copyWith(
               fontWeight: FontWeight.w500,
               fontSize: AppConstants.w * 0.045,

@@ -7,30 +7,35 @@ import 'package:fodwa/core/utils/app_colors.dart';
 import 'package:fodwa/core/sharedWidget/field.dart';
 import 'package:fodwa/core/sharedWidget/defult_drop_down.dart';
 
-
-
 import 'package:fodwa/features/Auth/login/presentation/widgets/widgets/phone/build_phone_number.dart';
 import 'package:fodwa/features/Auth/signUp/data/models/country_model.dart';
 import 'package:fodwa/features/profile/presentation/widgets/myAddress/bloc/address_bloc.dart';
 import 'package:fodwa/features/profile/presentation/widgets/myAddress/bloc/address_events.dart';
 import 'package:fodwa/features/profile/presentation/widgets/myAddress/bloc/address_states.dart';
 
+import 'package:fodwa/features/profile/data/models/address_model.dart';
+
 import 'address_map_selection_screen.dart';
 
 class AddNewAddress extends StatelessWidget {
-  const AddNewAddress({super.key});
+  final AddressModel? address;
+  const AddNewAddress({super.key, this.address});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => AddressBloc(),
-      child: const _AddNewAddressForm(),
-    );
+    // If we're providing the bloc from MyAddressScreen, we don't need to create a new one.
+    // However, if we reach here directly, we do.
+    // The previous code had a new BlocProvider, but since we pushed this via BlocProvider.value,
+    // we want to use the existing one if available. We can just NOT wrap it, but earlier code did.
+    // Actually, `MyAddressScreen` already wrapped it in `BlocProvider.value`.
+    // So if we just return `_AddNewAddressForm(address: address);`, it will find the bloc in context.
+    return _AddNewAddressForm(address: address);
   }
 }
 
 class _AddNewAddressForm extends StatefulWidget {
-  const _AddNewAddressForm();
+  final AddressModel? address;
+  const _AddNewAddressForm({this.address});
 
   @override
   State<_AddNewAddressForm> createState() => _AddNewAddressFormState();
@@ -45,7 +50,8 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _altPhoneController = TextEditingController();
   final TextEditingController _streetController = TextEditingController();
-  final TextEditingController _addressDetailsController = TextEditingController();
+  final TextEditingController _addressDetailsController =
+      TextEditingController();
   final TextEditingController _zipCodeController = TextEditingController();
 
   String _phoneIso = 'SA';
@@ -54,7 +60,34 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
   // Checkbox
   bool _saveAsDefault = true;
 
-  final List<String> _provinces = ['Riyadh Province', 'Makkah Province', 'Eastern Province', 'Madinah Province'];
+  final List<String> _provinces = [
+    'Riyadh Province',
+    'Makkah Province',
+    'Eastern Province',
+    'Madinah Province',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.address != null) {
+      final addr = widget.address!;
+      _fullNameController.text = "${addr.firstName} ${addr.lastName}".trim();
+      _addressController.text = addr.street;
+      _phoneController.text = addr.phoneNumber;
+      if (addr.altPhoneNumber != null)
+        _altPhoneController.text = addr.altPhoneNumber!;
+      _streetController.text = addr.street;
+      if (addr.details != null) _addressDetailsController.text = addr.details!;
+      if (addr.zipCode != null) _zipCodeController.text = addr.zipCode!;
+      _saveAsDefault = addr.isDefault;
+
+      // Update dropdown states via bloc
+      // Since cities/countries come from API, this might require a custom event to preset them,
+      // but for now we set the province text directly since it's a list string.
+      context.read<AddressBloc>().add(UpdateProvinceEvent(addr.province));
+    }
+  }
 
   @override
   void dispose() {
@@ -71,7 +104,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
   void _openMapSelection() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddressMapSelectionScreen()),
+      MaterialPageRoute(
+        builder: (context) => const AddressMapSelectionScreen(),
+      ),
     );
 
     if (result != null && result is Map) {
@@ -80,7 +115,11 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
       }
       if (mounted) {
         context.read<AddressBloc>().add(
-          UpdateLocationEvent(result['location'], result['address'], placemark: result['placemark']),
+          UpdateLocationEvent(
+            result['location'],
+            result['address'],
+            placemark: result['placemark'],
+          ),
         );
       }
     }
@@ -88,13 +127,19 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
 
   void _submitData(AddressUpdated? stateData) {
     if (_formKey.currentState!.validate()) {
+      final fullName = _fullNameController.text.trim();
+      final nameParts = fullName.split(' ');
+      final firstName = nameParts.first;
+      final lastName = nameParts.length > 1
+          ? nameParts.sublist(1).join(' ')
+          : "";
+
       final payload = {
-        // Use the Full Name field as the card label
-        'full_name': _fullNameController.text,
-        'address': _addressController.text,
-        'phone': _phoneController.text,
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone_number': _phoneController.text,
         'phone_iso': _phoneIso,
-        'alt_phone': _altPhoneController.text,
+        'alt_phone_number': _altPhoneController.text,
         'alt_phone_iso': _altPhoneIso,
         'province': stateData?.selectedProvince,
         'country': stateData?.selectedCountry?.name,
@@ -102,19 +147,28 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
         'city': stateData?.selectedCity?.name,
         'city_id': stateData?.selectedCity?.id,
         'street': _streetController.text,
-        'address_details': _addressDetailsController.text,
+        'details': _addressDetailsController.text,
         'zip_code': _zipCodeController.text,
-        'save_as_default': _saveAsDefault,
+        'is_default': _saveAsDefault,
         'latitude': stateData?.selectedLocation?.latitude,
         'longitude': stateData?.selectedLocation?.longitude,
       };
 
       debugPrint('[AddNewAddress] Submitting: $payload');
-      context.read<AddressBloc>().add(SubmitAddressEvent(payload));
+      if (widget.address != null) {
+        context.read<AddressBloc>().add(
+          UpdateAddressEvent(widget.address!.id, payload),
+        );
+      } else {
+        context.read<AddressBloc>().add(SubmitAddressEvent(payload));
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please complete all required fields', style: TextStyle(color: Colors.white, fontFamily: 'inter')),
+          content: const Text(
+            'Please complete all required fields',
+            style: TextStyle(color: Colors.white, fontFamily: 'inter'),
+          ),
           backgroundColor: AppColors.errorColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           behavior: SnackBarBehavior.floating,
@@ -130,10 +184,13 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
       appBar: AppBar(
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         backgroundColor: AppColors.surfaceColor,
-       
-        leading: 
-        IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black, size: AppConstants.w * 0.064),
+
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+            size: AppConstants.w * 0.064,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -149,35 +206,45 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
       // BlocConsumer wraps the ENTIRE body so the listener always fires
       body: BlocConsumer<AddressBloc, AddressState>(
         listener: (context, state) {
-          if (state is AddressSubmitSuccess) {
+          if (state is AddressSubmitSuccess || state is AddressUpdateSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-          content: const Text('Address Saved!', style: TextStyle(color: Colors.white, fontFamily: 'inter')),
-          backgroundColor: AppColors.successColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          behavior: SnackBarBehavior.floating,
-        ),
+              SnackBar(
+                content: const Text(
+                  'Address Saved!',
+                  style: TextStyle(color: Colors.white, fontFamily: 'inter'),
+                ),
+                backgroundColor: AppColors.successColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                behavior: SnackBarBehavior.floating,
+              ),
             );
-            // Return the saved payload back to MyAddressScreen
-            Navigator.pop(context, state.payload);
+            Navigator.pop(context, true);
           } else if (state is AddressSubmitFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.error)));
+          } else if (state is AddressUpdateFailure) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.error)));
           } else if (state is AddressUpdated && state.error != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error!)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.error!)));
           }
         },
         builder: (context, state) {
           // Show loading spinner over the entire form when submitting
-          if (state is AddressSubmitLoading) {
+          if (state is AddressSubmitLoading || state is AddressUpdateLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
           // Extract dropdown state (country/city/province from map selection or manual)
-          final addressState = state is AddressUpdated ? state : const AddressUpdated();
+          final addressState = state is AddressUpdated
+              ? state
+              : const AddressUpdated();
 
           return SafeArea(
             child: Form(
@@ -200,7 +267,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                               vertical: AppConstants.h * 0.02,
                             ),
                             decoration: BoxDecoration(
-                              border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                              border: Border(
+                                bottom: BorderSide(color: Colors.grey.shade300),
+                              ),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -213,13 +282,16 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                                     color: Colors.black87,
                                   ),
                                 ),
-                                Icon(Icons.arrow_forward, color: Colors.black, size: AppConstants.w * 0.05),
+                                Icon(
+                                  Icons.arrow_forward,
+                                  color: Colors.black,
+                                  size: AppConstants.w * 0.05,
+                                ),
                               ],
                             ),
                           ),
                         ),
                       ),
-                    
                     ],
                   ),
                   SizedBox(height: AppConstants.h * 0.024),
@@ -230,7 +302,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                     label: 'Address *',
                     hint: 'Palestine',
                     controller: _addressController,
-                    validator: (val) => val == null || val.isEmpty ? 'Address is required' : null,
+                    validator: (val) => val == null || val.isEmpty
+                        ? 'Address is required'
+                        : null,
                   ),
                   SizedBox(height: AppConstants.h * 0.02),
 
@@ -240,7 +314,19 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                     label: 'Full Name *',
                     hint: 'Mohammed',
                     controller: _fullNameController,
-                    validator: (val) => val == null || val.isEmpty ? 'Full Name is required' : null,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Full Name is required';
+                      }
+
+                      final parts = val.trim().split(RegExp(r'\s+'));
+
+                      if (parts.length < 2) {
+                        return 'Please enter first and last name';
+                      }
+
+                      return null;
+                    },
                   ),
                   SizedBox(height: AppConstants.h * 0.02),
 
@@ -270,18 +356,32 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                   _buildFieldLabel('Province *'),
                   DefaultDropdown<String>(
                     hintText: 'Select Province',
-                    items: [
-                      ..._provinces,
-                      if (addressState.selectedProvince != null && !_provinces.contains(addressState.selectedProvince))
-                        addressState.selectedProvince!
-                    ].toSet().toList()
-                        .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                        .toList(),
+                    items: () {
+                      final items = _provinces.toList();
+                      if (addressState.selectedProvince != null &&
+                          !items.contains(addressState.selectedProvince)) {
+                        items.add(addressState.selectedProvince!);
+                      }
+                      return items
+                          .toSet()
+                          .toList()
+                          .map(
+                            (p) => DropdownMenuItem<String>(
+                              value: p,
+                              child: Text(p),
+                            ),
+                          )
+                          .toList();
+                    }(),
                     value: addressState.selectedProvince,
                     onChanged: (val) {
-                      if (val != null) context.read<AddressBloc>().add(UpdateProvinceEvent(val));
+                      if (val != null)
+                        context.read<AddressBloc>().add(
+                          UpdateProvinceEvent(val),
+                        );
                     },
-                    validator: (val) => val == null ? 'Province is required' : null,
+                    validator: (val) =>
+                        val == null ? 'Province is required' : null,
                   ),
                   SizedBox(height: AppConstants.h * 0.02),
 
@@ -289,18 +389,32 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                   _buildFieldLabel('Country *'),
                   DefaultDropdown<CountryModel>(
                     hintText: 'Select Country',
-                    items: [
-                      ...countriesList,
-                      if (addressState.selectedCountry != null && !countriesList.any((c) => c.name == addressState.selectedCountry?.name))
-                        addressState.selectedCountry!
-                    ]
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c.name)))
-                        .toList(),
+                    items: () {
+                      final items = countriesList.toList();
+                      if (addressState.selectedCountry != null &&
+                          !items.any(
+                            (c) => c.name == addressState.selectedCountry?.name,
+                          )) {
+                        items.add(addressState.selectedCountry!);
+                      }
+                      return items
+                          .map(
+                            (c) => DropdownMenuItem<CountryModel>(
+                              value: c,
+                              child: Text(c.name),
+                            ),
+                          )
+                          .toList();
+                    }(),
                     value: addressState.selectedCountry,
                     onChanged: (val) {
-                      if (val != null) context.read<AddressBloc>().add(UpdateCountryEvent(val));
+                      if (val != null)
+                        context.read<AddressBloc>().add(
+                          UpdateCountryEvent(val),
+                        );
                     },
-                    validator: (val) => val == null ? 'Country is required' : null,
+                    validator: (val) =>
+                        val == null ? 'Country is required' : null,
                   ),
                   SizedBox(height: AppConstants.h * 0.02),
 
@@ -308,16 +422,30 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                   _buildFieldLabel('City *'),
                   DefaultDropdown<CityModel>(
                     hintText: 'Select City',
-                    items: <CityModel>[
-                      ...(addressState.selectedCountry?.cities ?? []),
-                      if (addressState.selectedCity != null && !(addressState.selectedCountry?.cities ?? []).any((c) => c.name == addressState.selectedCity?.name))
-                        addressState.selectedCity!
-                    ]
-                        .map((c) => DropdownMenuItem<CityModel>(value: c, child: Text(c.name)))
-                        .toList(),
+                    items: () {
+                      final items =
+                          (addressState.selectedCountry?.cities ??
+                                  <CityModel>[])
+                              .toList();
+                      if (addressState.selectedCity != null &&
+                          !items.any(
+                            (c) => c.name == addressState.selectedCity?.name,
+                          )) {
+                        items.add(addressState.selectedCity!);
+                      }
+                      return items
+                          .map(
+                            (c) => DropdownMenuItem<CityModel>(
+                              value: c,
+                              child: Text(c.name),
+                            ),
+                          )
+                          .toList();
+                    }(),
                     value: addressState.selectedCity,
                     onChanged: (val) {
-                      if (val != null) context.read<AddressBloc>().add(UpdateCityEvent(val));
+                      if (val != null)
+                        context.read<AddressBloc>().add(UpdateCityEvent(val));
                     },
                     validator: (val) => val == null ? 'City is required' : null,
                   ),
@@ -338,7 +466,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                     label: 'Address Details *',
                     hint: 'Street name',
                     controller: _addressDetailsController,
-                    validator: (val) => val == null || val.isEmpty ? 'Address Details are required' : null,
+                    validator: (val) => val == null || val.isEmpty
+                        ? 'Address Details are required'
+                        : null,
                   ),
                   SizedBox(height: AppConstants.h * 0.02),
 
@@ -349,7 +479,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                     hint: '11411',
                     controller: _zipCodeController,
                     keyboardType: TextInputType.number,
-                    validator: (val) => val == null || val.isEmpty ? 'Zip code is required' : null,
+                    validator: (val) => val == null || val.isEmpty
+                        ? 'Zip code is required'
+                        : null,
                   ),
                   SizedBox(height: AppConstants.h * 0.02),
 
@@ -358,7 +490,8 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                     children: [
                       Checkbox(
                         value: _saveAsDefault,
-                        onChanged: (val) => setState(() => _saveAsDefault = val ?? false),
+                        onChanged: (val) =>
+                            setState(() => _saveAsDefault = val ?? false),
                         activeColor: AppColors.primaryColor,
                       ),
                       Text(
@@ -378,8 +511,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                     width: double.infinity,
                     height: AppConstants.h * 0.05418, // Figma 44px
                     child: ElevatedButton(
-                      onPressed: (){
-                        _submitData(addressState);},
+                      onPressed: () {
+                        _submitData(addressState);
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryColor,
                         shape: RoundedRectangleBorder(
@@ -388,7 +522,9 @@ class _AddNewAddressFormState extends State<_AddNewAddressForm> {
                         elevation: 0,
                       ),
                       child: Text(
-                        'Add New Address',
+                        widget.address != null
+                            ? 'Update Address'
+                            : 'Add New Address',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: AppConstants.w * 0.0437, // 16px

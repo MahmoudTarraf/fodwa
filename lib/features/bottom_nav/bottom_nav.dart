@@ -7,6 +7,8 @@ import '../../core/utils/app_images.dart';
 import '../home/presentation/widgets/home_screens_item/home_page_item.dart'
     show HomePageItem;
 import '../messages/presentation/pages/messages_screen.dart';
+import '../../core/session/session_manager.dart';
+import '../../core/sharedWidget/guest_restricted_screen.dart';
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -17,6 +19,22 @@ class BottomNav extends StatefulWidget {
 
 class _BottomNavState extends State<BottomNav> {
   int index = 0;
+  bool isGuest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkGuestStatus();
+  }
+
+  Future<void> _checkGuestStatus() async {
+    final guest = await SessionManager.isGuestUser();
+    if (mounted) {
+      setState(() {
+        isGuest = guest;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,10 +59,10 @@ class _BottomNavState extends State<BottomNav> {
         onPressed: () {
           // floatingButtonSheet();
         },
-        child: Icon(
-          Icons.add_circle_outline,
-          size: AppConstants.w * 0.0667, // 25 / 375
-          color: Colors.white,
+        child: Image(
+          image: AssetImage(AppImages.shop),
+          height: AppConstants.w * 0.0667, // 25 / 375
+          color: AppColors.whiteProfile,
         ),
       ),
 
@@ -133,15 +151,18 @@ class _BottomNavState extends State<BottomNav> {
         ),
       ),
 
-      body: tabs[index],
+      body: _buildBody(),
     );
   }
 
-  final List<Widget> tabs = const [
-    HomePageItem(),
-    Center(child: Text('Cars Coming Soon')),
-    SizedBox.shrink(),
-    MessagesScreen(),
-    ProfileScreen(),
-  ];
+  Widget _buildBody() {
+    final List<Widget> tabs = [
+      const HomePageItem(),
+      const Center(child: Text('Cars Coming Soon')),
+      const SizedBox.shrink(),
+      isGuest ? const GuestRestrictedScreen() : const MessagesScreen(),
+      isGuest ? const GuestRestrictedScreen() : const ProfileScreen(),
+    ];
+    return tabs[index];
+  }
 }

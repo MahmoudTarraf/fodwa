@@ -1,0 +1,63 @@
+# Apple Sign-In Audit Report
+
+## 1️⃣ Flutter Apple Sign-In Implementation
+The project uses the `sign_in_with_apple` plugin (v6.1.1), which is the industry standard for Flutter.
+
+### Observations:
+- **Implementation**: The core logic is located in [buildSocilaLogin.dart](file:///f:/Fodwa-App-main/lib/features/Auth/login/presentation/widgets/socialLogin/buildSocilaLogin.dart).
+- **Scopes**: Email and Full Name scopes are correctly requested.
+- **Error Handling**: The code specifically handles the user cancellation case (`AuthorizationErrorCode.canceled`), which is a common requirement for App Store rejection prevention.
+
+## 2️⃣ Token Retrieval Verification
+The token extraction logic in [_handleAppleSignIn](file:///f:/Fodwa-App-main/lib/features/Auth/login/presentation/widgets/socialLogin/buildSocilaLogin.dart#88-131) correctly retrieves the required tokens:
+- **identityToken**: Extracted from `credential.identityToken`.
+- **authorizationCode**: Extracted from `credential.authorizationCode`.
+
+## 3️⃣ Backend Request Verification
+The API integration follows the required specification:
+- **Endpoint**: `apple-login/` (Defined in [end_points.dart](file:///f:/Fodwa-App-main/lib/core/apiManager/end_points.dart)).
+- **Request Body**:
+  ```json
+  {
+    "identity_token": "...",
+    "authorization_code": "..."
+  }
+  ```
+  (Validated in [social_login_models.dart](file:///f:/Fodwa-App-main/lib/features/Auth/login/data/models/social_login_models.dart)).
+- **Headers**: `Content-Type: application/json` is automatically set by [DioClient.init()](file:///f:/Fodwa-App-main/lib/core/apiManager/dio_client.dart).
+- **Endpoint Call**: Executed in [loginRDSImpl.dart](file:///f:/Fodwa-App-main/lib/features/Auth/login/data/data_sources/remote/loginRDSImpl.dart#L37-L57).
+
+## 4️⃣ iOS Configuration Verification
+- **Entitlements**: [Runner.entitlements](file:///f:/Fodwa-App-main/ios/Runner/Runner.entitlements) correctly includes the `com.apple.developer.applesignin` capability.
+- **Deployment Target**: The project is set to `13.0`, meeting the minimum requirement for Apple Sign-In.
+
+## 5️⃣ Development on Windows
+Since you are developing on **Windows**, here is what you need to know:
+
+> [!IMPORTANT]
+> **Apple Sign-In cannot be tested on Windows or Android without a Mac-hosted backend.**
+
+### Limitations:
+1. **iOS Testing**: You cannot run an iOS simulator or a physical iPhone from a Windows machine without external tools (like macOS cloud services or a Mac on the local network).
+2. **Apple Sign-In on Android**: While the code includes `WebAuthenticationOptions` for Android, this requires a specialized backend redirect (`https://.../api/apple/callback`) to handle the POST response from Apple. **It cannot be tested "locally" on an Android emulator without a publicly accessible callback URL.**
+
+### Recommendations for Windows Developers:
+- **Use a Physical iPhone + Mac**: To test the native flow, you must build the app on a Mac using Xcode.
+- **Codemagic / ODR (On-Demand Resources)**: Use a CI/CD service like Codemagic to build the `.ipa` and test it on a physical device.
+- **Cloud macOS**: Use services like MacinCloud to access a macOS environment for building and testing.
+
+## 6️⃣ Final Analysis
+✅ **Implementation Status**: **CORRECT**
+
+### Detailed Checklist:
+- [x] `identityToken` obtained: Yes
+- [x] `authorizationCode` obtained: Yes
+- [x] Backend Request Format: Yes (POST /apple-login/)
+- [x] Authorization Scopes: Yes (`email`, `fullName`)
+- [x] iOS Entitlements: Yes
+- [x] Error Handling: Yes (Handles cancellation)
+
+### Minor Improvements Suggested:
+1. **File Naming**: Rename [buildSocilaLogin.dart](file:///f:/Fodwa-App-main/lib/features/Auth/login/presentation/widgets/socialLogin/buildSocilaLogin.dart) to `build_social_login.dart` to fix the typo and follow Dart naming conventions.
+2. **Email Persistence**: Apple only returns the `email` and `fullName` on the **FIRST** successful authentication. Your backend must handle this by creating the user account during the first login and linking subsequent logins via the `sub` (Subject) identifier in the `identityToken`.
+3. **App Store Compliance**: Ensure the "Sign in with Apple" button strictly follows Apple’s Human Interface Guidelines (Black/White and specific sizing) to avoid rejection.

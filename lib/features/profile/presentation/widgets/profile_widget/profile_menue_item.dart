@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fodwa/core/utils/app_colors.dart';
 import 'package:fodwa/core/utils/app_texts.dart';
 import 'package:fodwa/core/utils/app_constants.dart';
 
@@ -8,6 +9,7 @@ class ProfileMenuItem extends StatelessWidget {
   final VoidCallback onTap;
   final String? iconImage; // assets path
   final Color? iconColor;
+  final Color? containerColor;
 
   const ProfileMenuItem({
     Key? key,
@@ -16,6 +18,7 @@ class ProfileMenuItem extends StatelessWidget {
     required this.onTap,
     this.iconImage,
     this.iconColor,
+    this.containerColor,
   }) : super(key: key);
 
   @override
@@ -41,9 +44,11 @@ class ProfileMenuItem extends StatelessWidget {
 
             Expanded(
               child: Text(
+                maxLines: 3,
+                softWrap: true,
+                overflow: TextOverflow.visible,
                 title,
                 style: AppTextStyles.titleMedium().copyWith(letterSpacing: 0),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -57,9 +62,9 @@ class ProfileMenuItem extends StatelessWidget {
       width: AppConstants.w * 0.064,
       height: AppConstants.w * 0.064,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Color(0xFFECF1F6),
+          color: containerColor ?? Color(0xFFECF1F6),
         ),
         child: Center(
           child: iconImage != null
@@ -69,13 +74,13 @@ class ProfileMenuItem extends StatelessWidget {
                   child: Image.asset(
                     iconImage!,
                     fit: BoxFit.contain,
-                    color: iconColor ?? const Color(0xFF78828A),
+                    color: iconColor ?? AppColors.dividerGray,
                   ),
                 )
               : Icon(
                   icon,
                   size: AppConstants.w * 0.051,
-                  color: iconColor ?? const Color(0xFF78828A),
+                  color: iconColor ?? AppColors.dividerGray,
                 ),
         ),
       ),

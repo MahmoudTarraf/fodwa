@@ -4,6 +4,12 @@ import 'package:fodwa/core/utils/app_colors.dart';
 import 'package:fodwa/core/utils/app_constants.dart';
 import 'package:fodwa/core/utils/responsive_helper.dart';
 import '../../../../../core/utils/app_images.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../../core/intialization/initiDI.dart';
+import 'bloc/address_bloc.dart';
+import 'bloc/address_events.dart';
+import 'bloc/address_states.dart';
+import '../../../data/models/address_model.dart';
 import 'add_new_address.dart';
 
 /// MyAddressScreen — displays saved addresses or an empty state.
@@ -16,29 +22,91 @@ class MyAddressScreen extends StatefulWidget {
 }
 
 class _MyAddressScreenState extends State<MyAddressScreen> {
-  // In-memory address storage — each entry is the payload returned by AddNewAddress
-  final List<Map<String, dynamic>> _savedAddresses = [];
+  late final AddressBloc _addressBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _addressBloc = getIt<AddressBloc>()..add(FetchAddressesEvent());
+  }
+
+  @override
+  void dispose() {
+    _addressBloc.close();
+    super.dispose();
+  }
 
   /// Navigate to AddNewAddress and capture the result
   Future<void> _navigateToAddAddress() async {
-    final result = await Navigator.push<Map<String, dynamic>>(
+    final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (context) => const AddNewAddress()),
+      MaterialPageRoute(
+        builder: (context) => BlocProvider.value(
+          value: _addressBloc,
+          child: const AddNewAddress(),
+        ),
+      ),
     );
 
-    // If the user saved an address, add it to the list
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _savedAddresses.add(result);
-      });
-    }
+    // ALWAYS fetch when popping back regardless of result to restore any overridden state
+    _addressBloc.add(FetchAddressesEvent());
   }
 
-  /// Delete an address from the in-memory list
-  void _deleteAddress(int index) {
-    setState(() {
-      _savedAddresses.removeAt(index);
-    });
+  /// Delete an address with confirmation
+  void _deleteAddress(int id) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.whiteBGAlert,
+
+          title: Text(
+            'Delete Address',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: AppConstants.w * 0.048,
+              color: AppColors.headingTextAlert,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete this address?',
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              fontSize: AppConstants.w * 0.037, // 14 / 375
+              color: Colors.black,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: AppColors.headingTextAlert,
+                  fontSize: AppConstants.w * 0.037, // 14 / 375
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _addressBloc.add(DeleteAddressEvent(id));
+              },
+              child: Text(
+                'Delete',
+                style: TextStyle(
+                  color: AppColors.logoutPrimary,
+                  fontSize: AppConstants.w * 0.043, // 16 / 375
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -68,47 +136,78 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          // Show address cards or empty state
-          Expanded(
-            child: _savedAddresses.isEmpty
-                ? _buildEmptyState()
-                : _buildAddressList(),
-          ),
+      body: BlocProvider.value(
+        value: _addressBloc,
+        child: BlocConsumer<AddressBloc, AddressState>(
+          listener: (context, state) {
+            if (state is AddressDeleteSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Address deleted successfully')),
+              );
+              _addressBloc.add(FetchAddressesEvent());
+            } else if (state is AddressDeleteFailure) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.error)));
+            }
+          },
+          builder: (context, state) {
+            Widget content = _buildEmptyState(); // default
 
-          // "Add New Address" button — always visible at bottom
-          Container(
-            width:double.infinity,
-            height: ResponsiveHelper.proportionalHeight(context, 100), // Figma height
-            color:Colors.white,
-            child:Padding(
-            padding: EdgeInsets.all(AppConstants.w * 0.064),
-            child: SizedBox(
-              width: double.infinity,
-              height: AppConstants.h * 0.0616,
-              child: ElevatedButton(
-                onPressed: _navigateToAddAddress,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppConstants.w * 0.0213),
+            if (state is AddressFetchLoading) {
+              content = const Center(child: CircularProgressIndicator());
+            } else if (state is AddressFetchSuccess) {
+              if (state.addresses.isEmpty) {
+                content = _buildEmptyState();
+              } else {
+                content = _buildAddressList(state.addresses);
+              }
+            } else if (state is AddressFetchFailure) {
+              content = Center(child: Text('Error: ${state.error}'));
+            } else {
+              // Usually we don't hit this unless the state hasn't fetched yet.
+              // For safe UI, keep whatever was built or empty.
+            }
+
+            return Column(
+              children: [
+                Expanded(child: content),
+                Container(
+                  width: double.infinity,
+                  height: ResponsiveHelper.proportionalHeight(context, 100),
+                  color: Colors.white,
+                  child: Padding(
+                    padding: EdgeInsets.all(AppConstants.w * 0.064),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: AppConstants.h * 0.0616,
+                      child: ElevatedButton(
+                        onPressed: _navigateToAddAddress,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppConstants.w * 0.0213,
+                            ),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Add New Address',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: AppConstants.w * 0.0427,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  elevation: 0,
                 ),
-                child: Text(
-                  'Add New Address',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: AppConstants.w * 0.0427,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),),
-          
-        ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -144,99 +243,117 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
   }
 
   /// Address list — scrollable list of address cards
-  Widget _buildAddressList() {
+  Widget _buildAddressList(List<AddressModel> addresses) {
     return ListView.builder(
       padding: EdgeInsets.symmetric(
         horizontal: AppConstants.w * 0.043,
         vertical: AppConstants.h * 0.015,
       ),
-      itemCount: _savedAddresses.length,
+      itemCount: addresses.length,
       itemBuilder: (context, index) {
-        return _buildAddressCard(_savedAddresses[index], index);
+        return _buildAddressCard(addresses[index]);
       },
     );
   }
 
   /// Individual address card — styled consistently with app design
-  Widget _buildAddressCard(Map<String, dynamic> address, int index) {
-    final String name = address['full_name'] ?? 'My Address';
-    final String fullAddress = address['address'] ?? '';
-    final String city = address['city'] ?? '';
-    final String country = address['country'] ?? '';
-    final String street = address['street'] ?? '';
-    final String details = address['address_details'] ?? '';
-    final bool isDefault = address['save_as_default'] == true;
+  Widget _buildAddressCard(AddressModel address) {
+    final String name = "${address.firstName} ${address.lastName}".trim();
+    final String fullAddress = address.street;
+    final String city = address.city;
+    final String province = address.province;
+    final String details = address.details ?? '';
+    final String phone = address.phoneNumber;
+    final String altPhone = address.altPhoneNumber ?? '';
+    final String zipCode = address.zipCode ?? '';
+    final bool isDefault = address.isDefault;
 
     // Build a subtitle from available location parts
     final List<String> locationParts = [
-      if (street.isNotEmpty) street,
+      if (province.isNotEmpty) province,
       if (city.isNotEmpty) city,
-      if (country.isNotEmpty) country,
     ];
     final String locationLine = locationParts.join(', ');
 
     return Card(
-      margin: EdgeInsets.only(bottom: AppConstants.h * 0.015),
+      margin: EdgeInsets.only(bottom: AppConstants.h * 0.018),
       color: AppColors.surfaceColor,
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: isDefault
             ? BorderSide(color: AppColors.primaryColor, width: 1.5)
             : BorderSide.none,
       ),
       child: Padding(
-        padding: EdgeInsets.all(AppConstants.w * 0.04),
+        padding: EdgeInsets.symmetric(
+          vertical: AppConstants.h * 0.02,
+          horizontal: AppConstants.w * 0.045,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header row: name + default badge + delete button
+            // Header row: Icon + Name + Default Badge + Actions
             Row(
               children: [
-                // Address name icon
                 Icon(
                   _getIconForName(name),
                   color: AppColors.primaryColor,
-                  size: AppConstants.w * 0.06,
+                  size: AppConstants.w * 0.065,
                 ),
-                SizedBox(width: AppConstants.w * 0.025),
-
-                // Address name label
+                SizedBox(width: AppConstants.w * 0.03),
                 Expanded(
                   child: Text(
                     name,
                     style: TextStyle(
-                      fontSize: AppConstants.w * 0.042,
-                      fontWeight: FontWeight.w700,
+                      fontSize: AppConstants.w * 0.045,
+                      fontWeight: FontWeight.bold,
                       color: const Color(0xFF171725),
                     ),
                   ),
                 ),
-
-                // Default badge
                 if (isDefault)
                   Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: AppConstants.w * 0.025,
-                      vertical: AppConstants.h * 0.004,
+                      horizontal: AppConstants.w * 0.03,
+                      vertical: AppConstants.h * 0.005,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppColors.primaryColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                     child: Text(
                       'Default',
                       style: TextStyle(
-                        fontSize: AppConstants.w * 0.028,
+                        fontSize: AppConstants.w * 0.03,
                         fontWeight: FontWeight.w600,
                         color: AppColors.primaryColor,
                       ),
                     ),
                   ),
-
-                // Delete button
                 IconButton(
-                  onPressed: () => _deleteAddress(index),
+                  onPressed: () async {
+                    final result = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BlocProvider.value(
+                          value: _addressBloc,
+                          child: AddNewAddress(address: address),
+                        ),
+                      ),
+                    );
+                    _addressBloc.add(FetchAddressesEvent());
+                  },
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.primaryColor,
+                    size: AppConstants.w * 0.055,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                IconButton(
+                  onPressed: () => _deleteAddress(address.id),
                   icon: Icon(
                     Icons.delete_outline,
                     color: Colors.red.shade400,
@@ -248,86 +365,91 @@ class _MyAddressScreenState extends State<MyAddressScreen> {
               ],
             ),
 
-            SizedBox(height: AppConstants.h * 0.01),
-            Divider(color: Colors.grey.shade200, height: 1),
-            SizedBox(height: AppConstants.h * 0.01),
+            SizedBox(height: AppConstants.h * 0.015),
+            Divider(color: Colors.grey.shade200, thickness: 1),
+            SizedBox(height: AppConstants.h * 0.015),
 
-            // Full address line
+            // Address info rows (icon + text)
             if (fullAddress.isNotEmpty)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.location_on_outlined,
-                      size: AppConstants.w * 0.04, color: Colors.grey[600]),
-                  SizedBox(width: AppConstants.w * 0.02),
-                  Expanded(
-                    child: Text(
-                      fullAddress,
-                      style: TextStyle(
-                        fontSize: AppConstants.w * 0.035,
-                        color: Colors.grey[700],
-                        height: 1.4,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+              _AddressRow(
+                icon: Icons.location_on_outlined,
+                text: fullAddress,
+                fontSize: AppConstants.w * 0.036,
+                textColor: Colors.grey[700]!,
               ),
-
-            // City / Country line
-            if (locationLine.isNotEmpty) ...[
-              SizedBox(height: AppConstants.h * 0.006),
-              Row(
-                children: [
-                  Icon(Icons.public,
-                      size: AppConstants.w * 0.04, color: Colors.grey[600]),
-                  SizedBox(width: AppConstants.w * 0.02),
-                  Expanded(
-                    child: Text(
-                      locationLine,
-                      style: TextStyle(
-                        fontSize: AppConstants.w * 0.033,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ),
-                ],
+            if (locationLine.isNotEmpty)
+              _AddressRow(
+                icon: Icons.public,
+                text: locationLine,
+                fontSize: AppConstants.w * 0.034,
+                textColor: Colors.grey[600]!,
               ),
-            ],
-
-            // Address details
-            if (details.isNotEmpty) ...[
-              SizedBox(height: AppConstants.h * 0.006),
-              Row(
-                children: [
-                  Icon(Icons.info_outline,
-                      size: AppConstants.w * 0.04, color: Colors.grey[600]),
-                  SizedBox(width: AppConstants.w * 0.02),
-                  Expanded(
-                    child: Text(
-                      details,
-                      style: TextStyle(
-                        fontSize: AppConstants.w * 0.033,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ),
-                ],
+            if (details.isNotEmpty)
+              _AddressRow(
+                icon: Icons.info_outline,
+                text: 'Details: $details',
+                fontSize: AppConstants.w * 0.034,
+                textColor: Colors.grey[600]!,
               ),
-            ],
+            if (phone.isNotEmpty)
+              _AddressRow(
+                icon: Icons.phone_outlined,
+                text: 'Phone: $phone',
+                fontSize: AppConstants.w * 0.034,
+                textColor: Colors.grey[600]!,
+              ),
+            if (altPhone.isNotEmpty)
+              _AddressRow(
+                icon: Icons.contact_phone_outlined,
+                text: 'Alt Phone: $altPhone',
+                fontSize: AppConstants.w * 0.034,
+                textColor: Colors.grey[600]!,
+              ),
+            if (zipCode.isNotEmpty)
+              _AddressRow(
+                icon: Icons.markunread_mailbox_outlined,
+                text: 'Zip Code: $zipCode',
+                fontSize: AppConstants.w * 0.034,
+                textColor: Colors.grey[600]!,
+              ),
           ],
         ),
       ),
     );
   }
+}
 
-  /// Returns an appropriate icon based on the address name
-  IconData _getIconForName(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('home')) return Icons.home_outlined;
-    if (lower.contains('work') || lower.contains('office')) return Icons.work_outline;
-    if (lower.contains('school') || lower.contains('uni')) return Icons.school_outlined;
-    return Icons.place_outlined;
-  }
+Widget _AddressRow({
+  required IconData icon,
+  required String text,
+  required double fontSize,
+  required Color textColor,
+}) {
+  return Padding(
+    padding: EdgeInsets.only(bottom: AppConstants.h * 0.008),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: fontSize * 1.2, color: Colors.grey[600]),
+        SizedBox(width: AppConstants.w * 0.025),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: fontSize, color: textColor, height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Returns an appropriate icon based on the address name
+IconData _getIconForName(String name) {
+  final lower = name.toLowerCase();
+  if (lower.contains('home')) return Icons.home_outlined;
+  if (lower.contains('work') || lower.contains('office'))
+    return Icons.work_outline;
+  if (lower.contains('school') || lower.contains('uni'))
+    return Icons.school_outlined;
+  return Icons.place_outlined;
 }

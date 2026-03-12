@@ -29,7 +29,6 @@ class BuildAccountDetails extends StatelessWidget {
             servicesOfferedController: servicesOfferedController,
           );
         }
-
         return const PersonalAcc();
       },
     );

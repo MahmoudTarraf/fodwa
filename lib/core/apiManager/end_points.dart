@@ -8,6 +8,7 @@ class AppEndPoints {
   static const String vehicles = "vehicles/";
   static const String logout = "logout/";
   static const String updateProfile = 'profile/update/';
+  static const String addresses = "addresses/";
 
   static const String forget_pass = "forgot-password/";
   static const String verify_code = "verify-code/";

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:fodwa/core/utils/app_colors.dart';
 import 'package:fodwa/core/utils/app_constants.dart';
+import 'package:fodwa/core/utils/app_images.dart';
 import 'package:fodwa/features/profile/presentation/widgets/profile_widget/profile_menue_item.dart';
 import 'package:fodwa/features/profile/presentation/widgets/profile_widget/sections_decoration.dart';
 
@@ -18,44 +20,51 @@ class BuildHowToBe extends StatelessWidget {
           child: Column(
             children: [
               ProfileMenuItem(
-                icon: Icons.star_border,
+                iconImage: AppImages.starProfile,
                 iconColor: Colors.red,
                 title: 'How to become an Influencer in FODWA?',
+                containerColor: AppColors.whiteProfile,
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.shopping_bag_outlined,
+                iconImage: AppImages.sellerProfile,
                 iconColor: Colors.red,
                 title: 'How to become a Seller in New Markt?',
+                containerColor: AppColors.whiteProfile,
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.domain,
+                iconImage: AppImages.buildingProfile,
                 iconColor: Colors.red,
                 title: 'How to add your Hotel in FODWA?',
+                containerColor: AppColors.whiteProfile,
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.local_taxi_outlined,
+                iconImage: AppImages.taxiProfile,
                 iconColor: Colors.red,
+                containerColor: AppColors.whiteProfile,
                 title: 'How to register your Taxi as a taxi in FODWA?',
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.person_outline,
+                iconImage: AppImages.userProfile,
                 iconColor: Colors.red,
+                containerColor: AppColors.whiteProfile,
                 title: 'How to Become a Model on the FODWA ?',
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.camera_alt_outlined,
+                iconImage: AppImages.cameraProfile,
                 iconColor: Colors.red,
-                title: 'How to Become a Product & Advertising Photographer on the FODWA ?',
+                containerColor: AppColors.whiteProfile,
+                title:
+                    'How to Become a Product & Advertising Photographer on the FODWA ?',
                 onTap: () {},
               ),
             ],

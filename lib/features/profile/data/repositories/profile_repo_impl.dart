@@ -20,6 +20,11 @@ class ProfileRepoImpl implements ProfileRepo {
   }
 
   @override
+  Future<Result<UserEntity>> partialUpdateProfile(Map<String, dynamic> data) async {
+    return await remoteDataSource.partialUpdateProfile(data);
+  }
+
+  @override
   Future<Result<UserEntity>> uploadProfileImage(String imagePath) async {
     return await remoteDataSource.uploadProfileImage(imagePath);
   }

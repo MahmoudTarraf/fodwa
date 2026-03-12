@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fodwa/core/utils/app_colors.dart';
 import 'package:fodwa/core/utils/app_constants.dart';
 
 class SectionHeader extends StatelessWidget {
@@ -23,7 +24,7 @@ class SectionHeader extends StatelessWidget {
         style: TextStyle(
           /// 12 (design font size) / 375
           fontSize: AppConstants.w * 0.032,
-          color: const Color(0xFF9CA3AF),
+          color: AppColors.sectionHeaderColor,
           fontWeight: FontWeight.w500,
         ),
       ),

@@ -5,8 +5,9 @@ import 'package:get_storage/get_storage.dart';
 
 import 'config/routes/app_router.dart';
 import 'core/intialization/initiDI.dart';
-import 'core/session/session_manager.dart';
 import 'core/apiManager/dio_client.dart';
+import 'core/networkError/network_state_wrapper.dart';
+import 'core/utils/navigator_key.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,9 +17,7 @@ Future<void> main() async {
   await initDI();
   await DioClient.init();
 
-  // Check if user is logged in
-  final bool isLoggedIn = await SessionManager.isLoggedIn();
-
+  // Initialization finished
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
@@ -26,7 +25,7 @@ Future<void> main() async {
       startLocale: Locale("en"),
 
       fallbackLocale: const Locale('en'),
-      child: MyApp(isLoggedIn: isLoggedIn),
+      child: const MyApp(),
 
       // DevicePreview(
       //   enabled: !kReleaseMode,
@@ -36,18 +35,21 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  final bool isLoggedIn;
-  const MyApp({super.key, required this.isLoggedIn});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       locale: context.locale,
       supportedLocales: context.supportedLocales,
       localizationsDelegates: context.localizationDelegates,
       debugShowCheckedModeBanner: false,
-      initialRoute: isLoggedIn ? AppRoutes.bottomNav : AppRoutes.splash,
+      initialRoute: AppRoutes.splash,
       onGenerateRoute: (settings) => Routes.onGenerate(settings),
+      builder: (context, child) {
+        return NetworkStateWrapper(child: child!);
+      },
     );
   }
 }

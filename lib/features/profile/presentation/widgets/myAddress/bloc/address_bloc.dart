@@ -2,16 +2,22 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../Auth/signUp/data/models/country_model.dart';
+import '../../../../data/data_sources/address_repository.dart';
 import 'address_events.dart';
 import 'address_states.dart';
 
 class AddressBloc extends Bloc<AddressEvent, AddressState> {
-  AddressBloc() : super(AddressInitial()) {
+  final AddressRepository repository;
+
+  AddressBloc({required this.repository}) : super(AddressInitial()) {
     on<UpdateLocationEvent>(_onUpdateLocation);
     on<UpdateCountryEvent>(_onUpdateCountry);
     on<UpdateCityEvent>(_onUpdateCity);
     on<UpdateProvinceEvent>(_onUpdateProvince);
     on<SubmitAddressEvent>(_onSubmitAddress);
+    on<FetchAddressesEvent>(_onFetchAddresses);
+    on<DeleteAddressEvent>(_onDeleteAddress);
+    on<UpdateAddressEvent>(_onUpdateAddress);
   }
 
   void _onUpdateLocation(UpdateLocationEvent event, Emitter<AddressState> emit) {
@@ -33,7 +39,7 @@ class AddressBloc extends Bloc<AddressEvent, AddressState> {
         
         if (matchedCountry.cities != null) {
           try {
-            matchedCity = matchedCountry.cities!.firstWhere(
+            matchedCity = matchedCountry.cities.firstWhere(
               (c) => c.name.toLowerCase() == detectedCity.toLowerCase() || 
                      detectedCity.toLowerCase().contains(c.name.toLowerCase()),
             );
@@ -85,14 +91,41 @@ class AddressBloc extends Bloc<AddressEvent, AddressState> {
 
   Future<void> _onSubmitAddress(SubmitAddressEvent event, Emitter<AddressState> emit) async {
     emit(AddressSubmitLoading());
-    try {
-      // Simulate API call or data processing
-      await Future.delayed(const Duration(seconds: 1));
-      
-      // Success
-      emit(AddressSubmitSuccess(event.payload));
-    } catch (e) {
-      emit(AddressSubmitFailure("Failed to submit address: ${e.toString()}"));
+    final result = await repository.createAddress(event.payload);
+    if (result.isSuccess) {
+      emit(AddressSubmitSuccess(result.data));
+    } else {
+      emit(AddressSubmitFailure(result.error ?? "Failed to submit address."));
+    }
+  }
+
+  Future<void> _onFetchAddresses(FetchAddressesEvent event, Emitter<AddressState> emit) async {
+    emit(AddressFetchLoading());
+    final result = await repository.fetchAddresses();
+    if (result.isSuccess) {
+      emit(AddressFetchSuccess(result.data));
+    } else {
+      emit(AddressFetchFailure(result.error ?? "Failed to fetch addresses."));
+    }
+  }
+
+  Future<void> _onDeleteAddress(DeleteAddressEvent event, Emitter<AddressState> emit) async {
+    emit(AddressDeleteLoading());
+    final result = await repository.deleteAddress(event.id);
+    if (result.isSuccess) {
+      emit(AddressDeleteSuccess(event.id));
+    } else {
+      emit(AddressDeleteFailure(result.error ?? "Failed to delete address."));
+    }
+  }
+
+  Future<void> _onUpdateAddress(UpdateAddressEvent event, Emitter<AddressState> emit) async {
+    emit(AddressUpdateLoading());
+    final result = await repository.updateAddress(event.id, event.payload);
+    if (result.isSuccess) {
+      emit(AddressUpdateSuccess(result.data));
+    } else {
+      emit(AddressUpdateFailure(result.error ?? "Failed to update address."));
     }
   }
 }

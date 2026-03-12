@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../../Auth/signUp/data/models/country_model.dart';
+import '../../../../data/models/address_model.dart';
 
 abstract class AddressState extends Equatable {
   const AddressState();
@@ -86,6 +87,57 @@ class AddressSubmitFailure extends AddressState {
 
   const AddressSubmitFailure(this.error);
 
+  @override
+  List<Object?> get props => [error];
+}
+
+// Fetch states
+class AddressFetchLoading extends AddressState {}
+
+class AddressFetchSuccess extends AddressState {
+  final List<AddressModel> addresses;
+  const AddressFetchSuccess(this.addresses);
+  @override
+  List<Object?> get props => [addresses];
+}
+
+class AddressFetchFailure extends AddressState {
+  final String error;
+  const AddressFetchFailure(this.error);
+  @override
+  List<Object?> get props => [error];
+}
+
+// Delete states
+class AddressDeleteLoading extends AddressState {}
+
+class AddressDeleteSuccess extends AddressState {
+  final int id;
+  const AddressDeleteSuccess(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
+class AddressDeleteFailure extends AddressState {
+  final String error;
+  const AddressDeleteFailure(this.error);
+  @override
+  List<Object?> get props => [error];
+}
+
+// Update states
+class AddressUpdateLoading extends AddressState {}
+
+class AddressUpdateSuccess extends AddressState {
+  final Map<String, dynamic> payload;
+  const AddressUpdateSuccess(this.payload);
+  @override
+  List<Object?> get props => [payload];
+}
+
+class AddressUpdateFailure extends AddressState {
+  final String error;
+  const AddressUpdateFailure(this.error);
   @override
   List<Object?> get props => [error];
 }

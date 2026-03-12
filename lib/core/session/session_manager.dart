@@ -41,6 +41,18 @@ class SessionManager {
     }
   }
 
+  static Future<bool> isGuestUser() async {
+    return !(await isLoggedIn());
+  }
+
+  static Future<void> saveRememberMe(bool value) async {
+    await GetStorageHelper.write(AppKeys.rememberMe, value);
+  }
+
+  static Future<bool> isRememberMe() async {
+    return GetStorageHelper.read(AppKeys.rememberMe) ?? false;
+  }
+
   static Future<String?> getToken() async {
     return await SecureStorageHelper.read(AppKeys.authToken);
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fodwa/core/utils/app_constants.dart';
+import 'package:fodwa/core/utils/app_images.dart';
 import 'package:fodwa/features/profile/presentation/widgets/profile_widget/profile_menue_item.dart';
 import 'package:fodwa/features/profile/presentation/widgets/profile_widget/sections_decoration.dart';
 
@@ -18,31 +19,35 @@ class BuildMyAccountsAs extends StatelessWidget {
           child: Column(
             children: [
               ProfileMenuItem(
-                icon: Icons.local_taxi_outlined,
+                iconImage: AppImages.taxiProfile,
                 title: 'Taxi Driver in Fodwa',
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.storefront_outlined,
+                iconImage: AppImages.sellerProfile,
+
                 title: 'Seller in New Markt in Fodwa',
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.person_outline,
+                iconImage: AppImages.userProfile,
+
                 title: 'Model in FODWA',
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.camera_alt_outlined,
+                iconImage: AppImages.cameraProfile,
+
                 title: 'Advertising Photographer on the FODWA',
                 onTap: () {},
               ),
               SizedBox(height: AppConstants.h * 0.01),
               ProfileMenuItem(
-                icon: Icons.business_outlined,
+                iconImage: AppImages.buildingProfile,
+
                 title: 'Hotel in FODWA?',
                 onTap: () {},
               ),

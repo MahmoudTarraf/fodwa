@@ -56,3 +56,20 @@ class SubmitAddressEvent extends AddressEvent {
   @override
   List<Object?> get props => [payload];
 }
+
+class FetchAddressesEvent extends AddressEvent {}
+
+class DeleteAddressEvent extends AddressEvent {
+  final int id;
+  const DeleteAddressEvent(this.id);
+  @override
+  List<Object?> get props => [id];
+}
+
+class UpdateAddressEvent extends AddressEvent {
+  final int id;
+  final Map<String, dynamic> payload;
+  const UpdateAddressEvent(this.id, this.payload);
+  @override
+  List<Object?> get props => [id, payload];
+}

@@ -10,7 +10,9 @@ class UserEntity {
   final String? aboutMe;
   final String accountType; // personal or company
   final bool isVerified;
-  final AddressEntity? address;
+  final String? addressString;
+  final AddressEntity? address; // Used for putting/updating
+  final List<AddressEntity>? addresses; // Used for GET
   final PersonalAccountEntity? personalAccount;
   final CompanyAccountEntity? companyAccount;
   final String? specialization;
@@ -28,7 +30,9 @@ class UserEntity {
     this.bannerImage,
     this.aboutMe,
     this.isVerified = false,
+    this.addressString,
     this.address,
+    this.addresses,
     this.personalAccount,
     this.companyAccount,
     this.specialization,
@@ -37,18 +41,30 @@ class UserEntity {
 }
 
 class AddressEntity {
-  final String country;
-  final String city;
+  final int? id;
+  final String? firstName;
+  final String? lastName;
+  final String? phoneNumber;
+  final String? altPhoneNumber;
+  final String? province;
+  final String? city;
   final String? street;
-  final String? buildingNumber;
-  final String? apartmentNumber;
+  final String? details;
+  final String? zipCode;
+  final bool? isDefault;
 
   AddressEntity({
-    required this.country,
-    required this.city,
+    this.id,
+    this.firstName,
+    this.lastName,
+    this.phoneNumber,
+    this.altPhoneNumber,
+    this.province,
+    this.city,
     this.street,
-    this.buildingNumber,
-    this.apartmentNumber,
+    this.details,
+    this.zipCode,
+    this.isDefault,
   });
 }
 

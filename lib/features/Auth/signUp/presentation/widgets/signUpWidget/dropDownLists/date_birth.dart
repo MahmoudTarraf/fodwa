@@ -17,13 +17,34 @@ import '../../../manager/sign_up_events.dart';
 import '../../../manager/sign_up_states.dart';
 
 class DateOfBirthPicker extends StatelessWidget {
-  const DateOfBirthPicker({super.key});
+  final DateTime? value;
+  final ValueChanged<DateTime>? onDateSelected;
+
+  const DateOfBirthPicker({
+    super.key,
+    this.value,
+    this.onDateSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
     // init size (375 × 812)
     AppConstants.initSize(context);
 
+    // If onDateSelected is provided, we use the passed values (standalone mode)
+    if (onDateSelected != null) {
+      return _buildPickerContent(context, value);
+    }
+
+    // Otherwise, fallback to SignUpBloc (signup mode)
+    return BlocBuilder<SignUpBloc, SignUpState>(
+      builder: (context, state) {
+        return _buildPickerContent(context, state.dateOfBirth);
+      },
+    );
+  }
+
+  Widget _buildPickerContent(BuildContext context, DateTime? currentDate) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -39,76 +60,83 @@ class DateOfBirthPicker extends StatelessWidget {
             color: const Color(0xFF171725),
           ),
         ),
-
         SizedBox(
           height: AppConstants.h * 0.0098, // 8 / 812
         ),
-
-        BlocBuilder<SignUpBloc, SignUpState>(
-          builder: (context, state) {
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _showDatePickerModal(context, state.dateOfBirth),
-              child: Container(
-                width: AppConstants.w * 0.8752,
-                height: AppConstants.h * 0.054,
-                padding: EdgeInsets.only(
-                  left: AppConstants.w * 0.043, // 16 / 375
-                  top: AppConstants.h * 0.012, // 10 / 812
-                  bottom: AppConstants.h * 0.012, // 10 / 812
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  borderRadius: BorderRadius.circular(
-                    AppConstants.w * 0.021, // 8 / 375
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _showDatePickerModal(context, currentDate),
+          child: Container(
+            width: AppConstants.w * 0.8752,
+            height: AppConstants.h * 0.054,
+            padding: EdgeInsets.only(
+              left: AppConstants.w * 0.043, // 16 / 375
+              top: AppConstants.h * 0.012, // 10 / 812
+              bottom: AppConstants.h * 0.012, // 10 / 812
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(
+                AppConstants.w * 0.021, // 8 / 375
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  currentDate != null
+                      ? DateFormat(
+                          'MMM dd, yyyy',
+                        ).format(currentDate)
+                      : 'Select Date of Birth',
+                  style: TextStyle(
+                    fontSize: AppConstants.w * 0.032, // 15 / 375
+                    color: currentDate != null
+                        ? Colors.black87
+                        : Color(0xFFE3E9ED),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      state.dateOfBirth != null
-                          ? DateFormat(
-                              'MMM dd, yyyy',
-                            ).format(state.dateOfBirth!)
-                          : 'Select Date of Birth',
-                      style: TextStyle(
-                        fontSize: AppConstants.w * 0.032, // 15 / 375
-                        color: state.dateOfBirth != null
-                            ? Colors.black87
-                            : Color(0xFFE3E9ED),
-                      ),
-                    ),
-                    SvgPicture.asset(
-                      AppImages.calender,
-                      width: AppConstants.w * 0.064,
-                      height: AppConstants.h * 0.064,
-                      color: Colors.black,
-                    ),
-                  ],
+                SvgPicture.asset(
+                  AppImages.calender,
+                  width: AppConstants.w * 0.064,
+                  height: AppConstants.h * 0.064,
+                  color: Colors.black,
                 ),
-              ),
-            );
-          },
+              ],
+            ),
+          ),
         ),
-
         SizedBox(height: AppConstants.h * 0.015),
       ],
     );
   }
 
   void _showDatePickerModal(BuildContext context, DateTime? currentDate) {
-    final bloc = context.read<SignUpBloc>();
+    // Check if we are in signup mode (using SignUpBloc)
+    SignUpBloc? signUpBloc;
+    try {
+      signUpBloc = context.read<SignUpBloc>();
+    } catch (_) {
+      // Not in signup context
+    }
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (modalContext) => BlocProvider.value(
-        value: bloc,
-        child: DatePickerModal(initialDate: currentDate),
-      ),
+      builder: (modalContext) {
+        if (signUpBloc != null && onDateSelected == null) {
+          return BlocProvider.value(
+            value: signUpBloc,
+            child: DatePickerModal(initialDate: currentDate),
+          );
+        }
+        return DatePickerModal(
+          initialDate: currentDate,
+          onConfirm: onDateSelected,
+        );
+      },
     );
   }
 }
@@ -119,8 +147,9 @@ class DateOfBirthPicker extends StatelessWidget {
 
 class DatePickerModal extends StatefulWidget {
   final DateTime? initialDate;
+  final ValueChanged<DateTime>? onConfirm;
 
-  const DatePickerModal({super.key, this.initialDate});
+  const DatePickerModal({super.key, this.initialDate, this.onConfirm});
 
   @override
   State<DatePickerModal> createState() => _DatePickerModalState();
@@ -320,11 +349,14 @@ class _DatePickerModalState extends State<DatePickerModal> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      context.read<SignUpBloc>().add(
-                        SelectDateOfBirthEvent(
-                          DateTime(selectedYear, selectedMonth, selectedDay),
-                        ),
-                      );
+                      final selectedDate = DateTime(selectedYear, selectedMonth, selectedDay);
+                      if (widget.onConfirm != null) {
+                        widget.onConfirm!(selectedDate);
+                      } else {
+                        context.read<SignUpBloc>().add(
+                              SelectDateOfBirthEvent(selectedDate),
+                            );
+                      }
                       Navigator.pop(context);
                     },
                     style: ElevatedButton.styleFrom(

@@ -37,6 +37,15 @@ class AppImages {
   static const String gallery = "${AppConstants.iconsUrl}gallery.png";
   static const String threeDots = "${AppConstants.iconsUrl}threeDots.png";
   static const String success = "${AppConstants.iconsUrl}success.png";
+  static const String taxiProfile = "${AppConstants.iconsUrl}taxi_profile.png";
+  static const String buildingProfile = "${AppConstants.iconsUrl}building_profile.png";
+  static const String cameraProfile = "${AppConstants.iconsUrl}camera_profile.png";
+  static const String userProfile = "${AppConstants.iconsUrl}user_profile.png";
+  static const String sellerProfile = "${AppConstants.iconsUrl}seller_profile.png";
+  static const String edit = "${AppConstants.iconsUrl}edit.png";
+  static const String starProfile = "${AppConstants.iconsUrl}star_profile.png";
+  static const String shop = "${AppConstants.iconsUrl}shop.png";
+  static const String profileLittleIcon= "${AppConstants.iconsUrl}profile_little_icon.png";
   static const String sendMessageButton = "${AppConstants.iconsUrl}sendMessageButton.png";
   static const String googleIcon = "${AppConstants.imageUrl}googleIcon.png";
   static const String vectorRightAddress = "${AppConstants.iconsUrl}Vector_right_maps.png";

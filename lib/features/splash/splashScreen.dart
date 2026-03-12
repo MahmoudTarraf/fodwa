@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fodwa/core/utils/app_images.dart';
-import 'package:fodwa/features/Auth/login/presentation/pages/login_screen.dart';
+import 'package:fodwa/core/session/session_manager.dart';
+import 'package:fodwa/config/routes/app_router.dart';
 import '../../core/utils/app_constants.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -17,14 +18,22 @@ class _SplashScreenState extends State<SplashScreen> {
     _navigateAfterDelay();
   }
 
-  void _navigateAfterDelay() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    });
+  void _navigateAfterDelay() async {
+    // Perform checking while delaying
+    final isLogged = await SessionManager.isLoggedIn();
+    final isRemember = await SessionManager.isRememberMe();
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+
+    if (isLogged && isRemember) {
+      Navigator.pushReplacementNamed(context, AppRoutes.bottomNav);
+    } else {
+      if (isLogged && !isRemember) {
+        await SessionManager.clearSession();
+      }
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    }
   }
 
   @override

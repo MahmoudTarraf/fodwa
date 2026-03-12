@@ -6,6 +6,8 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:fodwa/core/session/session_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:fodwa/core/config/env_config.dart';
+import 'package:fodwa/core/utils/navigator_key.dart';
+import 'package:fodwa/config/routes/app_router.dart';
 
 class DioClient {
   static PersistCookieJar? cookieJar;
@@ -40,6 +42,23 @@ class DioClient {
                   options.headers['Authorization'] = 'Bearer $token';
                 }
                 return handler.next(options);
+              },
+              onError: (DioException e, ErrorInterceptorHandler handler) async {
+                if (e.response?.statusCode == 401) {
+                  // Clear ALL session data including "Remember Me"
+                  await SessionManager.clearSession();
+                  await SessionManager.saveRememberMe(false);
+
+                  // Navigate to login, clearing the entire navigation stack
+                  final nav = navigatorKey.currentState;
+                  if (nav != null) {
+                    nav.pushNamedAndRemoveUntil(
+                      AppRoutes.login,
+                      (route) => false,
+                    );
+                  }
+                }
+                return handler.next(e);
               },
             ),
           ]);

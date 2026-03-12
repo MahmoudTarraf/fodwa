@@ -10,7 +10,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter/services.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -22,21 +21,19 @@ class SocialLogin extends StatefulWidget {
 }
 
 class _SocialLoginState extends State<SocialLogin> {
-  // print(dotenv.env['GOOGLE_SERVER_CLIENT_ID']);
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-     serverClientId: dotenv.env['GOOGLE_SERVER_CLIENT_ID'] ?? "",
   );
 
-  @override
-  void initState() {
-    super.initState();
-    print(dotenv.env['GOOGLE_SERVER_CLIENT_ID']);
-  }
+
   Future<void> _handleGoogleSignIn() async {
     try {
       await _googleSignIn.signOut(); // Ensure fresh login flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+            debugPrint("[GoogleSignIn] google email: ${googleUser?.email}");
+            debugPrint("[GoogleSignIn] google id: ${googleUser?.id}");
+            debugPrint("[GoogleSignIn] auth headers: ${googleUser?.authHeaders}");
+
       if (googleUser != null) {
         final GoogleSignInAuthentication googleAuth =
             await googleUser.authentication;
@@ -45,23 +42,21 @@ class _SocialLoginState extends State<SocialLogin> {
         debugPrint("[GoogleSignIn] idToken: ${googleAuth.idToken}");
         debugPrint("[GoogleSignIn] accessToken: ${googleAuth.accessToken}");
 
-        final String? idToken = googleAuth.idToken;
-        if (idToken == null || idToken.isEmpty) {
-          debugPrint("[GoogleSignIn] ERROR: idToken is null. Check serverClientId configuration.");
-          _showError(context, "auth.googleSignInError".tr());
-          return;
-        }
+       final String? accessToken = googleAuth.accessToken;
 
-        if (mounted) {
-          context.read<LoginBloc>().add(
-            SocialLoginButtonPressed(
-              model: SocialLoginModel(
-                provider: "google",
-                idToken: idToken,
-              ),
-            ),
-          );
-        }
+if (accessToken == null || accessToken.isEmpty) {
+  debugPrint("[GoogleSignIn] ERROR: accessToken is null.");
+  return;
+}
+
+context.read<LoginBloc>().add(
+  SocialLoginButtonPressed(
+    model: SocialLoginModel(
+      provider: "google",
+      accessToken: accessToken,
+    ),
+  ),
+);
       } else {
         debugPrint("[GoogleSignIn] Sign-In cancelled by user.");
       }

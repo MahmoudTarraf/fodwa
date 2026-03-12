@@ -38,7 +38,7 @@ Widget build_field_name(String fieldName) {
       fontWeight: FontWeight.w500,
       fontSize: AppConstants.w * 0.037,
       letterSpacing: 0,
-      color: const Color(0xFF171725),
+      color: AppColors.textPrimary,
     ),
   );
 }

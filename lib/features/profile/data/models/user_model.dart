@@ -13,7 +13,9 @@ class UserModel extends UserEntity {
     super.bannerImage,
     super.aboutMe,
     super.isVerified,
+    super.addressString,
     super.address,
+    super.addresses,
     super.personalAccount,
     super.companyAccount,
     super.specialization,
@@ -35,8 +37,12 @@ class UserModel extends UserEntity {
       isVerified: json['is_verified'] ?? false,
       specialization: json['specialization'],
       jobTitle: json['job_title'],
-      address: json['address'] != null
+      addressString: json['address'] is String ? json['address'] : null,
+      address: json['address'] is Map<String, dynamic>
           ? AddressModel.fromJson(json['address'])
+          : null,
+      addresses: json['addresses'] != null
+          ? (json['addresses'] as List).map((x) => AddressModel.fromJson(x)).toList()
           : null,
       personalAccount: json['personal_account'] != null
           ? PersonalAccountModel.fromJson(json['personal_account'])
@@ -48,57 +54,81 @@ class UserModel extends UserEntity {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
+    final Map<String, dynamic> data = {
       'email': email,
       'full_name': fullName,
-      'phone_number': phoneNumber,
-      'country_code': countryCode,
-      'profile_picture': profilePicture,
-      'profile_image': profileImage,
-      'banner_image': bannerImage,
-      'about_me': aboutMe,
       'account_type': accountType,
-      'is_verified': isVerified,
-      'specialization': specialization,
-      'job_title': jobTitle,
-      'address': address != null ? (address as AddressModel).toJson() : null,
-      'personal_account': personalAccount != null
-          ? (personalAccount as PersonalAccountModel).toJson()
-          : null,
-      'company_account': companyAccount != null
-          ? (companyAccount as CompanyAccountModel).toJson()
-          : null,
     };
+
+    if (id != '0' && id.isNotEmpty) data['id'] = id;
+    if (phoneNumber != null && phoneNumber!.isNotEmpty) data['phone_number'] = phoneNumber;
+    if (countryCode != null && countryCode!.isNotEmpty) data['country_code'] = countryCode;
+    if (aboutMe != null) data['about_me'] = aboutMe;
+    if (specialization != null) data['specialization'] = specialization;
+    if (jobTitle != null) data['job_title'] = jobTitle;
+
+    if (address != null) {
+      data['address'] = (address as AddressModel).toJson();
+    }
+
+    if (personalAccount != null) {
+      final pJson = (personalAccount as PersonalAccountModel).toJson();
+      if (pJson.isNotEmpty) data['personal_account'] = pJson;
+    }
+
+    if (companyAccount != null) {
+      final cJson = (companyAccount as CompanyAccountModel).toJson();
+      if (cJson.isNotEmpty) data['company_account'] = cJson;
+    }
+
+    return data;
   }
 }
 
 class AddressModel extends AddressEntity {
   AddressModel({
-    required super.country,
-    required super.city,
+    super.id,
+    super.firstName,
+    super.lastName,
+    super.phoneNumber,
+    super.altPhoneNumber,
+    super.province,
+    super.city,
     super.street,
-    super.buildingNumber,
-    super.apartmentNumber,
+    super.details,
+    super.zipCode,
+    super.isDefault,
   });
 
   factory AddressModel.fromJson(Map<String, dynamic> json) {
     return AddressModel(
-      country: json['country'] ?? '',
-      city: json['city'] ?? '',
+      id: json['id'],
+      firstName: json['first_name'],
+      lastName: json['last_name'],
+      phoneNumber: json['phone_number'],
+      altPhoneNumber: json['alt_phone_number'],
+      province: json['province'],
+      city: json['city'],
       street: json['street'],
-      buildingNumber: json['building_number'],
-      apartmentNumber: json['apartment_number'],
+      details: json['details'],
+      zipCode: json['zip_code'],
+      isDefault: json['is_default'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'country': country,
-      'city': city,
-      'street': street,
-      'building_number': buildingNumber,
-      'apartment_number': apartmentNumber,
+      if (id != null) 'id': id,
+      if (firstName != null) 'first_name': firstName,
+      if (lastName != null) 'last_name': lastName,
+      if (phoneNumber != null) 'phone_number': phoneNumber,
+      if (altPhoneNumber != null) 'alt_phone_number': altPhoneNumber,
+      if (province != null) 'province': province,
+      if (city != null) 'city': city,
+      if (street != null) 'street': street,
+      if (details != null) 'details': details,
+      if (zipCode != null) 'zip_code': zipCode,
+      if (isDefault != null) 'is_default': isDefault,
     };
   }
 }
@@ -123,13 +153,14 @@ class PersonalAccountModel extends PersonalAccountEntity {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'gender': gender,
-      'date_of_birth': dateOfBirth,
-      'specialization': specialization,
-      'general_job': generalJob,
-      'skills': skills,
-    };
+    final Map<String, dynamic> data = {};
+    if (gender != null) data['gender'] = gender!.toLowerCase();
+    if (dateOfBirth != null) data['date_of_birth'] = dateOfBirth;
+    if (specialization != null) data['specialization'] = specialization;
+    if (generalJob != null) data['general_job'] = generalJob;
+    // Skills must be at least an empty list if this object is sent
+    data['skills'] = skills ?? [];
+    return data;
   }
 }
 
@@ -149,10 +180,11 @@ class CompanyAccountModel extends CompanyAccountEntity {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'business_sector': businessSector,
-      'tax_number': taxNumber,
-      'services_offered': servicesOffered,
-    };
+    final Map<String, dynamic> data = {};
+    if (businessSector != null) data['business_sector'] = businessSector;
+    if (taxNumber != null) data['tax_number'] = taxNumber;
+    // Services must be at least empty list if this object is sent
+    data['services_offered'] = servicesOffered ?? [];
+    return data;
   }
 }

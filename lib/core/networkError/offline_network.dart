@@ -2,11 +2,10 @@
 // ignore_for_file: unused_local_variable
 
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
- import '../utils/app_colors.dart';
+import '../utils/app_colors.dart';
 import '../utils/app_constants.dart';
-
-
 
 class OfflineNetwork extends StatefulWidget {
   const OfflineNetwork({super.key});
@@ -75,7 +74,20 @@ class _CheckNetworkState extends State<OfflineNetwork> {
             AppConstants.w * 0.03,
           ),
         ),
-        IconButton(icon: Icon(Icons.refresh), onPressed: () {}),
+        SizedBox(height: AppConstants.h * 0.02),
+        ElevatedButton(
+          onPressed: () async {
+            // Manually check connectivity
+            await Connectivity().checkConnectivity();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text('Retry', style: TextStyle(color: Colors.white)),
+        ),
       ],
     );
   }

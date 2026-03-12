@@ -28,6 +28,7 @@ class LoginRDSImpl implements LoginRDS {
 
     await saveUserData(user);
     await SessionManager.saveSession(token: token, userId: user.id);
+    await SessionManager.saveRememberMe(model.rememberMe ?? false);
 
     return Result.success(user);
   }
